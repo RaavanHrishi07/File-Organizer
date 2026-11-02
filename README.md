@@ -1,17 +1,22 @@
 # File Organizer 📁
 
-A simple and user-friendly Python desktop application that automatically organizes files into categorized folders based on their file extensions.
+A simple and user-friendly Python desktop application that automatically organizes files into categorized folders based on their file extensions. The application includes a preview system, file size information, duplicate filename protection, and a live progress bar for a safer and more informative file organization experience.
 
 ## ✨ Features
 
-- Select any folder using the Browse button
+- Browse and select any folder to organize
+- Preview files before making any changes
+- View each file's destination category before organizing
+- Display individual file sizes in the preview
+- Display the total number and combined size of selected files
 - Automatically organize files into categories
-- Supports images, documents, videos, audio, archives and code files
-- Moves unsupported file types into an Others folder
-- Prevents duplicate filename conflicts
-- Confirmation before organizing files
-- Displays a summary of successfully moved and failed files
-- Simple graphical user interface built with Tkinter
+- Supports Images, Documents, Videos, Audio, Archives, and Code files
+- Moves unsupported file types into an `Others` folder
+- Prevents duplicate filename conflicts by creating unique filenames
+- Shows a confirmation before files are moved
+- Live progress bar with percentage completion
+- Displays real-time moved and failed file counts
+- Simple and user-friendly graphical interface built with Tkinter
 
 ## 🛠️ Technologies Used
 
@@ -58,12 +63,22 @@ Run the following command:
 ## ⚙️ How It Works
 
 1. Launch the application.
-2. Select a folder using the Browse button.
-3. Click Organize Files.
-4. Confirm the operation.
-5. Files are moved into folders based on their extensions.
+2. Select a folder using the **Browse** button.
+3. Click **Preview Files** to review the files before organizing them.
+4. Check each file's destination category and file size.
+5. Review the total file count and combined size.
+6. Click **Confirm & Organize** when ready.
+7. Watch the live progress bar while files are organized.
+8. The application displays the final number of successfully moved and failed files.
 
-The application processes files directly inside the selected folder and does not recursively organize subfolders.
+The application processes only files directly inside the selected folder and does not recursively organize files inside existing subfolders.
+
+## 🛡️ Safety Features
+
+- Files are not moved until the user confirms the operation.
+- The preview window allows users to cancel before any changes are made.
+- Existing files are protected from being overwritten through duplicate filename handling.
+- Folder selection and file access errors are handled with user-friendly messages.
 
 ## 📁 Project Structure
 
@@ -71,18 +86,19 @@ The application processes files directly inside the selected folder and does not
     │
     ├── main.py
     ├── README.md
+    ├── LICENSE
     └── .gitignore
 
 ## ⚠️ Important Note
 
-Files are moved from their original locations into category folders. Always test with a temporary folder before organizing important files.
+Files are moved from their original locations into category folders. Although the application provides a preview and confirmation step, it is recommended to test with a temporary folder before organizing important files.
 
 ## 👤 Author
 
 **Hrishikesh Sharma**
 
-GitHub: [@RaavanHrishi07](https://github.com/RaavanHrishi07)
+GitHub: @RaavanHrishi07
 
 ## 📄 License
 
-This project is licensed under the MIT License.
+This project is licensed under the MIT License. See the `LICENSE` file for more information.
