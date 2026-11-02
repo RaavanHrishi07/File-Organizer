@@ -15,10 +15,11 @@ FILE_CATEGORIES = {
 
 
 class FileOrganizer:
+
     def __init__(self, root):
         self.root = root
         self.root.title("File Organizer")
-        self.root.geometry("650x520")
+        self.root.geometry("650x540")
         self.root.resizable(False, False)
 
         self.folder_path = tk.StringVar()
@@ -70,7 +71,7 @@ class FileOrganizer:
             main_frame,
             text="Supported Categories",
             font=("Segoe UI", 11, "bold")
-        ).pack(anchor="w", pady=(20, 10))
+        ).pack(anchor="w", pady=(15, 8))
 
         categories_frame = ttk.Frame(main_frame)
         categories_frame.pack(fill="x")
@@ -80,34 +81,34 @@ class FileOrganizer:
                 categories_frame,
                 text=f"📁 {category}",
                 font=("Segoe UI", 10)
-            ).pack(anchor="w", pady=3)
+            ).pack(anchor="w", pady=2)
 
         ttk.Label(
             categories_frame,
             text="📁 Others — All unsupported file types",
             font=("Segoe UI", 10)
-        ).pack(anchor="w", pady=3)
+        ).pack(anchor="w", pady=2)
 
         ttk.Button(
             main_frame,
-            text="Organize Files",
-            command=self.organize_files
-        ).pack(fill="x", pady=(25, 12), ipady=6)
+            text="Preview Files",
+            command=self.preview_files
+        ).pack(fill="x", pady=(20, 8), ipady=6)
 
-        ttk.Separator(main_frame).pack(fill="x", pady=10)
+        ttk.Separator(main_frame).pack(fill="x", pady=8)
 
         ttk.Label(
             main_frame,
             textvariable=self.status_var,
             font=("Segoe UI", 10),
             wraplength=580
-        ).pack(pady=10)
+        ).pack(pady=8)
 
         ttk.Label(
             main_frame,
-            text="Tip: Only files directly inside the selected folder will be organized.",
+            text="Tip: Preview your files before moving them.",
             font=("Segoe UI", 9)
-        ).pack(pady=(10, 0))
+        ).pack(pady=(8, 0))
 
     def select_folder(self):
         folder = filedialog.askdirectory(
@@ -116,7 +117,7 @@ class FileOrganizer:
 
         if folder:
             self.folder_path.set(folder)
-            self.status_var.set("Folder selected. Ready to organize.")
+            self.status_var.set("Folder selected. Ready to preview.")
 
     def get_category(self, file_path):
         extension = file_path.suffix.lower()
@@ -144,7 +145,7 @@ class FileOrganizer:
 
             counter += 1
 
-    def organize_files(self):
+    def preview_files(self):
         selected_folder = self.folder_path.get()
 
         if not selected_folder:
@@ -171,13 +172,85 @@ class FileOrganizer:
         if not files:
             messagebox.showinfo(
                 "No Files Found",
-                "There are no files to organize in this folder."
+                "There are no files to organize."
             )
             return
 
+        preview_window = tk.Toplevel(self.root)
+        preview_window.title("File Organization Preview")
+        preview_window.geometry("650x480")
+        preview_window.transient(self.root)
+
+        ttk.Label(
+            preview_window,
+            text="File Organization Preview",
+            font=("Segoe UI", 17, "bold")
+        ).pack(pady=(15, 5))
+
+        ttk.Label(
+            preview_window,
+            text=f"{len(files)} files found in the selected folder.",
+            font=("Segoe UI", 10)
+        ).pack(pady=(0, 12))
+
+        table_frame = ttk.Frame(preview_window, padding=(15, 0))
+        table_frame.pack(fill="both", expand=True)
+
+        columns = ("filename", "category")
+
+        tree = ttk.Treeview(
+            table_frame,
+            columns=columns,
+            show="headings"
+        )
+
+        tree.heading("filename", text="File Name")
+        tree.heading("category", text="Destination Folder")
+
+        tree.column("filename", width=390)
+        tree.column("category", width=190)
+
+        scrollbar = ttk.Scrollbar(
+            table_frame,
+            orient="vertical",
+            command=tree.yview
+        )
+
+        tree.configure(yscrollcommand=scrollbar.set)
+
+        tree.pack(side="left", fill="both", expand=True)
+        scrollbar.pack(side="right", fill="y")
+
+        for file_path in files:
+            category = self.get_category(file_path)
+
+            tree.insert(
+                "",
+                "end",
+                values=(file_path.name, category)
+            )
+
+        button_frame = ttk.Frame(preview_window, padding=15)
+        button_frame.pack(fill="x")
+
+        ttk.Button(
+            button_frame,
+            text="Cancel",
+            command=preview_window.destroy
+        ).pack(side="right", padx=(8, 0))
+
+        ttk.Button(
+            button_frame,
+            text="Confirm & Organize",
+            command=lambda: self.confirm_organization(
+                folder, preview_window
+            )
+        ).pack(side="right")
+
+    def confirm_organization(self, folder, preview_window):
         confirm = messagebox.askyesno(
             "Confirm Organization",
-            f"Organize {len(files)} files into category folders?"
+            "Are you sure you want to move these files?"
         )
 
         if not confirm:
@@ -185,6 +258,11 @@ class FileOrganizer:
 
         moved = 0
         failed = 0
+
+        files = [
+            item for item in folder.iterdir()
+            if item.is_file()
+        ]
 
         for file_path in files:
             try:
@@ -201,6 +279,8 @@ class FileOrganizer:
 
             except OSError:
                 failed += 1
+
+        preview_window.destroy()
 
         self.status_var.set(
             f"Organization complete! Moved: {moved} | Failed: {failed}"
