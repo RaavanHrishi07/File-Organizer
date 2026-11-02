@@ -128,6 +128,19 @@ class FileOrganizer:
 
         return "Others"
 
+    def format_size(self, size_bytes):
+        """Convert file size into a readable format."""
+        if size_bytes < 1024:
+            return f"{size_bytes} B"
+
+        if size_bytes < 1024 ** 2:
+            return f"{size_bytes / 1024:.2f} KB"
+
+        if size_bytes < 1024 ** 3:
+            return f"{size_bytes / (1024 ** 2):.2f} MB"
+
+        return f"{size_bytes / (1024 ** 3):.2f} GB"
+
     def get_unique_path(self, destination):
         if not destination.exists():
             return destination
@@ -176,9 +189,32 @@ class FileOrganizer:
             )
             return
 
+        file_data = []
+        total_size = 0
+
+        for file_path in files:
+            try:
+                size = file_path.stat().st_size
+                category = self.get_category(file_path)
+
+                file_data.append(
+                    (file_path, category, size)
+                )
+                total_size += size
+
+            except OSError:
+                continue
+
+        if not file_data:
+            messagebox.showerror(
+                "Read Error",
+                "Could not read the selected files."
+            )
+            return
+
         preview_window = tk.Toplevel(self.root)
         preview_window.title("File Organization Preview")
-        preview_window.geometry("650x480")
+        preview_window.geometry("760x520")
         preview_window.transient(self.root)
 
         ttk.Label(
@@ -189,14 +225,20 @@ class FileOrganizer:
 
         ttk.Label(
             preview_window,
-            text=f"{len(files)} files found in the selected folder.",
+            text=f"{len(file_data)} files found",
             font=("Segoe UI", 10)
+        ).pack(pady=(0, 5))
+
+        ttk.Label(
+            preview_window,
+            text=f"Total Size: {self.format_size(total_size)}",
+            font=("Segoe UI", 11, "bold")
         ).pack(pady=(0, 12))
 
         table_frame = ttk.Frame(preview_window, padding=(15, 0))
         table_frame.pack(fill="both", expand=True)
 
-        columns = ("filename", "category")
+        columns = ("filename", "category", "size")
 
         tree = ttk.Treeview(
             table_frame,
@@ -205,10 +247,12 @@ class FileOrganizer:
         )
 
         tree.heading("filename", text="File Name")
-        tree.heading("category", text="Destination Folder")
+        tree.heading("category", text="Destination")
+        tree.heading("size", text="File Size")
 
-        tree.column("filename", width=390)
+        tree.column("filename", width=350)
         tree.column("category", width=190)
+        tree.column("size", width=100, anchor="center")
 
         scrollbar = ttk.Scrollbar(
             table_frame,
@@ -221,13 +265,15 @@ class FileOrganizer:
         tree.pack(side="left", fill="both", expand=True)
         scrollbar.pack(side="right", fill="y")
 
-        for file_path in files:
-            category = self.get_category(file_path)
-
+        for file_path, category, size in file_data:
             tree.insert(
                 "",
                 "end",
-                values=(file_path.name, category)
+                values=(
+                    file_path.name,
+                    category,
+                    self.format_size(size)
+                )
             )
 
         button_frame = ttk.Frame(preview_window, padding=15)
