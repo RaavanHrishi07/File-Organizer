@@ -1,3 +1,4 @@
+
 import tkinter as tk
 from tkinter import ttk, filedialog, messagebox
 from pathlib import Path
@@ -19,13 +20,18 @@ class FileOrganizer:
     def __init__(self, root):
         self.root = root
         self.root.title("File Organizer")
-        self.root.geometry("650x540")
+        self.root.geometry("650x570")
         self.root.resizable(False, False)
 
         self.folder_path = tk.StringVar()
         self.status_var = tk.StringVar(
             value="Select a folder to get started."
         )
+        self.progress_text = tk.StringVar(
+            value="Progress: 0%"
+        )
+
+        self.is_organizing = False
 
         self.setup_ui()
 
@@ -61,11 +67,12 @@ class FileOrganizer:
             state="readonly"
         ).pack(side="left", fill="x", expand=True)
 
-        ttk.Button(
+        self.browse_button = ttk.Button(
             folder_frame,
             text="Browse",
             command=self.select_folder
-        ).pack(side="left", padx=(8, 0))
+        )
+        self.browse_button.pack(side="left", padx=(8, 0))
 
         ttk.Label(
             main_frame,
@@ -89,35 +96,63 @@ class FileOrganizer:
             font=("Segoe UI", 10)
         ).pack(anchor="w", pady=2)
 
-        ttk.Button(
+        self.preview_button = ttk.Button(
             main_frame,
             text="Preview Files",
             command=self.preview_files
-        ).pack(fill="x", pady=(20, 8), ipady=6)
+        )
+        self.preview_button.pack(fill="x", pady=(18, 8), ipady=6)
 
         ttk.Separator(main_frame).pack(fill="x", pady=8)
+
+        ttk.Label(
+            main_frame,
+            text="Organization Progress",
+            font=("Segoe UI", 10, "bold")
+        ).pack(anchor="w", pady=(5, 5))
+
+        self.progress_bar = ttk.Progressbar(
+            main_frame,
+            orient="horizontal",
+            mode="determinate",
+            maximum=100
+        )
+        self.progress_bar.pack(fill="x", pady=5)
+
+        ttk.Label(
+            main_frame,
+            textvariable=self.progress_text,
+            font=("Segoe UI", 9)
+        ).pack(anchor="center")
 
         ttk.Label(
             main_frame,
             textvariable=self.status_var,
             font=("Segoe UI", 10),
             wraplength=580
-        ).pack(pady=8)
+        ).pack(pady=10)
 
         ttk.Label(
             main_frame,
             text="Tip: Preview your files before moving them.",
             font=("Segoe UI", 9)
-        ).pack(pady=(8, 0))
+        ).pack(pady=(5, 0))
 
     def select_folder(self):
+        if self.is_organizing:
+            return
+
         folder = filedialog.askdirectory(
             title="Select a folder to organize"
         )
 
         if folder:
             self.folder_path.set(folder)
-            self.status_var.set("Folder selected. Ready to preview.")
+            self.status_var.set(
+                "Folder selected. Ready to preview."
+            )
+            self.progress_bar["value"] = 0
+            self.progress_text.set("Progress: 0%")
 
     def get_category(self, file_path):
         extension = file_path.suffix.lower()
@@ -129,7 +164,6 @@ class FileOrganizer:
         return "Others"
 
     def format_size(self, size_bytes):
-        """Convert file size into a readable format."""
         if size_bytes < 1024:
             return f"{size_bytes} B"
 
@@ -159,6 +193,9 @@ class FileOrganizer:
             counter += 1
 
     def preview_files(self):
+        if self.is_organizing:
+            return
+
         selected_folder = self.folder_path.get()
 
         if not selected_folder:
@@ -294,6 +331,9 @@ class FileOrganizer:
         ).pack(side="right")
 
     def confirm_organization(self, folder, preview_window):
+        if self.is_organizing:
+            return
+
         confirm = messagebox.askyesno(
             "Confirm Organization",
             "Are you sure you want to move these files?"
@@ -302,31 +342,100 @@ class FileOrganizer:
         if not confirm:
             return
 
-        moved = 0
-        failed = 0
-
         files = [
             item for item in folder.iterdir()
             if item.is_file()
         ]
 
-        for file_path in files:
-            try:
-                category = self.get_category(file_path)
-                destination_folder = folder / category
-
-                destination_folder.mkdir(exist_ok=True)
-
-                destination = destination_folder / file_path.name
-                destination = self.get_unique_path(destination)
-
-                shutil.move(str(file_path), str(destination))
-                moved += 1
-
-            except OSError:
-                failed += 1
+        if not files:
+            preview_window.destroy()
+            messagebox.showinfo(
+                "No Files Found",
+                "There are no files left to organize."
+            )
+            return
 
         preview_window.destroy()
+
+        self.is_organizing = True
+        self.preview_button.config(state="disabled")
+        self.browse_button.config(state="disabled")
+
+        self.progress_bar["maximum"] = len(files)
+        self.progress_bar["value"] = 0
+        self.progress_text.set("Progress: 0%")
+
+        self.status_var.set("Starting file organization...")
+
+        self.process_files(
+            files,
+            folder,
+            current_index=0,
+            moved=0,
+            failed=0
+        )
+
+    def process_files(
+        self,
+        files,
+        folder,
+        current_index,
+        moved,
+        failed
+    ):
+        total_files = len(files)
+
+        if current_index >= total_files:
+            self.finish_organization(moved, failed)
+            return
+
+        file_path = files[current_index]
+
+        try:
+            category = self.get_category(file_path)
+            destination_folder = folder / category
+
+            destination_folder.mkdir(exist_ok=True)
+
+            destination = destination_folder / file_path.name
+            destination = self.get_unique_path(destination)
+
+            shutil.move(str(file_path), str(destination))
+            moved += 1
+
+        except OSError:
+            failed += 1
+
+        completed = current_index + 1
+        percentage = (completed / total_files) * 100
+
+        self.progress_bar["value"] = completed
+        self.progress_text.set(
+            f"Progress: {percentage:.1f}% ({completed}/{total_files})"
+        )
+
+        self.status_var.set(
+            f"Processing files... Moved: {moved} | Failed: {failed}"
+        )
+
+        self.root.after(
+            15,
+            lambda: self.process_files(
+                files,
+                folder,
+                completed,
+                moved,
+                failed
+            )
+        )
+
+    def finish_organization(self, moved, failed):
+        self.is_organizing = False
+
+        self.preview_button.config(state="normal")
+        self.browse_button.config(state="normal")
+
+        self.progress_text.set("Progress: 100%")
 
         self.status_var.set(
             f"Organization complete! Moved: {moved} | Failed: {failed}"
